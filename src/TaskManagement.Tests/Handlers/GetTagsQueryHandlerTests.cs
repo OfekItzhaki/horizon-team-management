@@ -1,5 +1,10 @@
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using TaskManagement.Application.Queries.Tags;
 using TaskManagement.Domain.Entities;
 using TaskManagement.Infrastructure.Data;
@@ -11,9 +16,11 @@ namespace TaskManagement.Tests.Handlers;
 public class GetTagsQueryHandlerTests : IDisposable
 {
     private readonly TaskManagementDbContext _context;
+    private readonly Mock<ILogger<GetTagsQueryHandler>> _loggerMock;
 
     public GetTagsQueryHandlerTests()
     {
+        _loggerMock = new Mock<ILogger<GetTagsQueryHandler>>();
         var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -38,7 +45,7 @@ public class GetTagsQueryHandlerTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task Handle_ShouldReturnAllTags()
     {
-        var handler = new GetTagsQueryHandler(_context);
+        var handler = new GetTagsQueryHandler(_context, _loggerMock.Object);
         var query = new GetTagsQuery();
 
         var result = await handler.Handle(query, CancellationToken.None);

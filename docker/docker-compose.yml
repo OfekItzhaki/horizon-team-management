@@ -1,11 +1,11 @@
 services:
   api:
     build:
-      context: .
+      context: ..
       dockerfile: src/TaskManagement.API/Dockerfile
     container_name: taskmanagement-api
     ports:
-      - "5063:80"
+      - "5063:8080"
       - "7000:443"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
@@ -18,11 +18,11 @@ services:
 
   frontend:
     build:
-      context: src/TaskManagement.Web
+      context: ../src/TaskManagement.Web
       dockerfile: Dockerfile
     container_name: taskmanagement-frontend
     ports:
-      - "5173:80"
+      - "5176:80" # Changed from 5173 to 5176 to avoid conflicts
     depends_on:
       - api
     networks:
@@ -30,7 +30,7 @@ services:
 
   windows-service:
     build:
-      context: .
+      context: ..
       dockerfile: src/TaskManagement.WindowsService/Dockerfile
     container_name: taskmanagement-service
     environment:
@@ -70,7 +70,7 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"   # AMQP port
+      - "5672:5672" # AMQP port
       - "15672:15672" # Management UI port
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -86,6 +86,7 @@ services:
 volumes:
   sqlserver_data:
   rabbitmq_data:
+
 
 networks:
   taskmanagement-network:

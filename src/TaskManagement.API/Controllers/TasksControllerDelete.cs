@@ -14,6 +14,7 @@ public partial class TasksController
     /// </summary>
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(404)]
     [ProducesResponseType(429)]
     [ProducesResponseType(500)]

@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace TaskManagement.API.Configuration;
 
@@ -46,15 +49,32 @@ public static class ServiceCollectionExtensions
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 2
                     }));
-            options.OnRejected = async (context, _) =>
-            {
-                context.HttpContext.Response.StatusCode = 429;
-                await context.HttpContext.Response.WriteAsJsonAsync(new { message = "Too many requests. Please try again later." });
-            };
         });
+
+        // JWT Authentication
+        var tokenKey = configuration["Jwt:TokenKey"] ?? throw new InvalidOperationException("Jwt:TokenKey not found");
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey)),
+                    ValidateIssuer = false,
+                    ValidateAudience = false
+                };
+            });
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         services.AddHealthChecks()
-            .AddSqlServer(connectionString ?? string.Empty, name: "sqlserver", failureStatus: HealthStatus.Unhealthy);
+            .AddSqlServer(connectionString ?? string.Empty, name: "sqlserver", failureStatus: HealthStatus.Unhealthy)
+            .AddRabbitMQ(rabbitConnectionString: "amqp://localhost", name: "rabbitmq", failureStatus: HealthStatus.Degraded);
+
+        services.AddHealthChecksUI(setup =>
+        {
+            setup.AddHealthCheckEndpoint("System Health", "/health");
+            setup.SetEvaluationTimeInSeconds(30);
+        })
+        .AddInMemoryStorage();
     }
 }

@@ -2,7 +2,7 @@ using TaskManagement.Domain.Enums;
 
 namespace TaskManagement.Application.DTOs;
 
-public class TaskDto
+public record TaskDto
 {
     public int Id { get; init; }
     public string Title { get; init; } = string.Empty;
@@ -11,6 +11,6 @@ public class TaskDto
     public Priority Priority { get; init; }
     public int CreatedByUserId { get; init; }
     public byte[] RowVersion { get; init; } = Array.Empty<byte>();
-    public List<UserTaskDto> Users { get; init; } = new();
-    public List<TagDto> Tags { get; init; } = new();
+    public IReadOnlyList<UserTaskDto> Users { get; init; } = new List<UserTaskDto>();
+    public IReadOnlyList<TagDto> Tags { get; init; } = new List<TagDto>();
 }

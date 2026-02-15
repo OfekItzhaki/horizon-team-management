@@ -7,7 +7,7 @@ namespace TaskManagement.Application.DTOs;
 /// Data transfer object for updating a task.
 /// Note: The task ID is provided in the URL path, not in the request body.
 /// </summary>
-public class UpdateTaskDto
+public record UpdateTaskDto
 {
     /// <summary>
     /// The title of the task (max 200 characters).
@@ -15,7 +15,7 @@ public class UpdateTaskDto
     /// <example>Complete project documentation</example>
     [Required]
     [MaxLength(200)]
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     /// <summary>
     /// The description of the task (max 1000 characters).
@@ -23,14 +23,14 @@ public class UpdateTaskDto
     /// <example>Write comprehensive README and API documentation</example>
     [Required]
     [MaxLength(1000)]
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 
     /// <summary>
     /// The due date for the task (must be today or in the future).
     /// </summary>
     /// <example>2024-12-31T00:00:00Z</example>
     [Required]
-    public DateTime DueDate { get; set; }
+    public DateTime DueDate { get; init; }
 
     /// <summary>
     /// The priority of the task. Values: 1=Low, 2=Medium, 3=High, 4=Critical
@@ -38,7 +38,7 @@ public class UpdateTaskDto
     /// <example>3</example>
     [Required]
     [Range(1, 4, ErrorMessage = "Priority must be between 1 and 4")]
-    public Priority Priority { get; set; }
+    public Priority Priority { get; init; }
 
     /// <summary>
     /// List of user IDs assigned to this task (at least one required).
@@ -46,7 +46,7 @@ public class UpdateTaskDto
     /// <example>[1, 2]</example>
     [Required]
     [MinLength(1, ErrorMessage = "At least one user must be assigned")]
-    public List<int> UserIds { get; set; } = new();
+    public IReadOnlyList<int> UserIds { get; init; } = new List<int>();
 
     /// <summary>
     /// List of tag IDs associated with this task (at least one required).
@@ -54,12 +54,12 @@ public class UpdateTaskDto
     /// <example>[1, 2, 3]</example>
     [Required]
     [MinLength(1, ErrorMessage = "At least one tag must be selected")]
-    public List<int> TagIds { get; set; } = new();
+    public IReadOnlyList<int> TagIds { get; init; } = new List<int>();
 
     /// <summary>
     /// Row version for optimistic concurrency control. 
     /// This should match the RowVersion of the task when it was loaded.
     /// If provided and doesn't match, the update will fail with a concurrency error.
     /// </summary>
-    public byte[]? RowVersion { get; set; }
+    public byte[]? RowVersion { get; init; }
 }

@@ -3,6 +3,8 @@ using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using TaskManagement.Application.Exceptions;
+using ValException = TaskManagement.Application.Exceptions.ValidationException;
+using FluentValException = FluentValidation.ValidationException;
 
 namespace TaskManagement.API.Middleware;
 
@@ -41,8 +43,10 @@ public class ExceptionMiddleware
         {
             EntityNotFoundException entityEx => (HttpStatusCode.NotFound, (object)new { message = entityEx.Message }),
             KeyNotFoundException keyEx => (HttpStatusCode.NotFound, (object)new { message = keyEx.Message }),
+            ForbiddenException forbiddenEx => (HttpStatusCode.Forbidden, (object)new { message = forbiddenEx.Message }),
             ConflictException conflictEx => (HttpStatusCode.Conflict, (object)new { message = conflictEx.Message }),
-            ValidationException valEx => (HttpStatusCode.BadRequest, (object)new { errors = valEx.Errors.Select(e => new { property = e.PropertyName, message = e.ErrorMessage }) }),
+            ValException customValEx => (HttpStatusCode.BadRequest, (object)new { message = customValEx.Message, errors = customValEx.Errors }),
+            FluentValException valEx => (HttpStatusCode.BadRequest, (object)new { errors = valEx.Errors.Select(e => new { property = e.PropertyName, message = e.ErrorMessage }) }),
             DbUpdateConcurrencyException => (HttpStatusCode.Conflict, (object)new { message = "This resource has been modified by another user. Please refresh and try again." }),
             _ => (HttpStatusCode.InternalServerError, (object)new
             {

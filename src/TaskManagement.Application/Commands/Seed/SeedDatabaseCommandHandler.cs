@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskManagement.Application.Commands.Seed.SeedData;
+using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Data;
 
 namespace TaskManagement.Application.Commands.Seed;
@@ -9,11 +10,13 @@ namespace TaskManagement.Application.Commands.Seed;
 public class SeedDatabaseCommandHandler : IRequestHandler<SeedDatabaseCommand, SeedDatabaseResult>
 {
     private readonly TaskManagementDbContext _context;
+    private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<SeedDatabaseCommandHandler> _logger;
 
-    public SeedDatabaseCommandHandler(TaskManagementDbContext context, ILogger<SeedDatabaseCommandHandler> logger)
+    public SeedDatabaseCommandHandler(TaskManagementDbContext context, IPasswordHasher passwordHasher, ILogger<SeedDatabaseCommandHandler> logger)
     {
         _context = context;
+        _passwordHasher = passwordHasher;
         _logger = logger;
     }
 
@@ -29,7 +32,7 @@ public class SeedDatabaseCommandHandler : IRequestHandler<SeedDatabaseCommand, S
         }
 
         // Create seed data
-        var users = SeedDataFactory.CreateUsers();
+        var users = SeedDataFactory.CreateUsers(_passwordHasher);
         var tags = SeedDataFactory.CreateTags();
 
         _context.Users.AddRange(users);

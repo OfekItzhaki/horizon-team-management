@@ -11,8 +11,10 @@ public static class UserExtensions
         {
             Id = user.Id,
             FullName = user.FullName,
+            Username = user.Username,
             Telephone = user.Telephone,
             Email = user.Email,
+            Role = user.Role
         };
     }
 }

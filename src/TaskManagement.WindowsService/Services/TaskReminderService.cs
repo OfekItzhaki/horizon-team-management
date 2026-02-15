@@ -96,6 +96,13 @@ public class TaskReminderService : BackgroundService
             var reminder = JsonSerializer.Deserialize<ReminderMessage>(message);
             if (reminder != null)
             {
+                if (reminder.TaskId <= 0 || string.IsNullOrWhiteSpace(reminder.TaskTitle))
+                {
+                    _logger.LogWarning("Received incomplete reminder message: TaskId={TaskId}, Title={Title}. NACKing.", 
+                        reminder.TaskId, reminder.TaskTitle ?? "(null)");
+                    return false;
+                }
+
                 var correlationId = reminder.CorrelationId ?? "(none)";
                 _logger.LogInformation(
                     "Reminder processed: Task {TaskId} - {TaskTitle} for {UserName} [CorrelationId: {CorrelationId}]",

@@ -80,3 +80,13 @@ export interface GetTasksParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
+
+export interface LoginDto {
+  username: string;
+  password?: string;
+}
+
+export interface AuthResponse {
+  username: string;
+  token: string;
+}

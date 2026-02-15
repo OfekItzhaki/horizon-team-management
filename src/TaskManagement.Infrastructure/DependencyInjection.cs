@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Data;
 
 namespace TaskManagement.Infrastructure;
@@ -25,6 +26,9 @@ public static class DependencyInjection
                     errorNumbersToAdd: null);
             });
         });
+
+        services.AddScoped<IPasswordHasher, Auth.PasswordHasher>();
+        services.AddScoped<ITokenService, Auth.TokenService>();
 
         return services;
     }

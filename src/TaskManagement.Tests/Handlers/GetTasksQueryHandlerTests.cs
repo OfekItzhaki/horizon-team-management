@@ -1,5 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using TaskManagement.Application.Queries.Tasks;
 using TaskManagement.Domain.Entities;
 using TaskManagement.Domain.Enums;
@@ -12,9 +14,11 @@ namespace TaskManagement.Tests.Handlers;
 public class GetTasksQueryHandlerTests : IDisposable
 {
     private readonly TaskManagementDbContext _context;
+    private readonly Mock<ILogger<GetTasksQueryHandler>> _loggerMock;
 
     public GetTasksQueryHandlerTests()
     {
+        _loggerMock = new Mock<ILogger<GetTasksQueryHandler>>();
         var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -85,7 +89,7 @@ public class GetTasksQueryHandlerTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task Handle_ShouldReturnAllTasks()
     {
-        var handler = new GetTasksQueryHandler(_context);
+        var handler = new GetTasksQueryHandler(_context, _loggerMock.Object);
         var query = new GetTasksQuery { Page = 1, PageSize = 10 };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -100,7 +104,7 @@ public class GetTasksQueryHandlerTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task Handle_ShouldIncludeUsersAndTags()
     {
-        var handler = new GetTasksQueryHandler(_context);
+        var handler = new GetTasksQueryHandler(_context, _loggerMock.Object);
         var query = new GetTasksQuery { Page = 1, PageSize = 10 };
 
         var result = await handler.Handle(query, CancellationToken.None);

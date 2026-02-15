@@ -1,6 +1,8 @@
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using TaskManagement.Application.Commands.Tasks;
 using TaskManagement.Application.DTOs;
 using TaskManagement.Domain.Entities;
@@ -14,9 +16,11 @@ namespace TaskManagement.Tests.Handlers;
 public class CreateTaskCommandHandlerTests : IDisposable
 {
     private readonly TaskManagementDbContext _context;
+    private readonly Mock<ILogger<CreateTaskCommandHandler>> _loggerMock;
 
     public CreateTaskCommandHandlerTests()
     {
+        _loggerMock = new Mock<ILogger<CreateTaskCommandHandler>>();
         var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -53,7 +57,7 @@ public class CreateTaskCommandHandlerTests : IDisposable
     public async System.Threading.Tasks.Task Handle_ValidCommand_ShouldCreateTask()
     {
         // Arrange
-        var handler = new CreateTaskCommandHandler(_context);
+        var handler = new CreateTaskCommandHandler(_context, _loggerMock.Object);
         var command = new CreateTaskCommand
         {
             Task = new CreateTaskDto

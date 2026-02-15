@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TaskManagement.Application.Commands.Tasks;
 using TaskManagement.Application.DTOs;
 using TaskManagement.Application.Queries.Tasks;
@@ -8,6 +9,7 @@ using TasksWithTagsDto = TaskManagement.Application.DTOs.TasksWithTagsDto;
 
 namespace TaskManagement.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 [ApiVersion("1.0")]

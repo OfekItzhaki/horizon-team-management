@@ -46,7 +46,14 @@ public class TasksControllerTests : IClassFixture<WebApplicationFactory<Program>
 
         var scope = _factory.Services.CreateScope();
         _context = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+        var tokenService = scope.ServiceProvider.GetRequiredService<TaskManagement.Domain.Interfaces.ITokenService>();
+        
         SeedDatabase();
+        
+        // Generate and set token
+        var user = _context.Users.First(u => u.Id == 1);
+        var token = tokenService.CreateToken(user);
+        _client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
     }
 
     private void SeedDatabase()

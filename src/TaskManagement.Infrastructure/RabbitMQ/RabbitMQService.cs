@@ -1,5 +1,8 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -14,43 +17,78 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private readonly object _inFlightLock = new();
     private const int ShutdownWaitSeconds = 30;
 
+    private readonly RetryPolicy _retryPolicy;
+    private readonly CircuitBreakerPolicy _circuitBreakerPolicy;
+    private readonly Policy _resiliencePolicy;
+
     public RabbitMQService(ILogger<RabbitMQService> logger, string hostName = "localhost")
     {
         _logger = logger;
         _connection = new RabbitMQConnection(logger, hostName);
+
+        // Define Retry Policy: 3 retries with exponential backoff (2, 4, 8 seconds)
+        _retryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetry(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                (exception, timeSpan, retryCount, context) =>
+                {
+                    _logger.LogWarning(exception, "Retry {RetryCount} for RabbitMQ publishing after {TimeSpan}ms due to {ErrorMessage}", 
+                        retryCount, timeSpan.TotalMilliseconds, exception.Message);
+                });
+
+        // Define Circuit Breaker: Breaks after 2 consecutive failures, stays open for 30 seconds
+        _circuitBreakerPolicy = Policy
+            .Handle<Exception>()
+            .CircuitBreaker(2, TimeSpan.FromSeconds(30),
+                onBreak: (exception, duration) =>
+                {
+                    _logger.LogError(exception, "RabbitMQ Circuit Breaker BROKEN for {Duration}s due to {ErrorMessage}", 
+                        duration.TotalSeconds, exception.Message);
+                },
+                onReset: () => _logger.LogInformation("RabbitMQ Circuit Breaker RESET"),
+                onHalfOpen: () => _logger.LogInformation("RabbitMQ Circuit Breaker HALF-OPEN - testing connection..."));
+
+        // Wrap policies
+        _resiliencePolicy = Policy.Wrap(_retryPolicy, _circuitBreakerPolicy);
     }
 
     public void PublishMessage(string queueName, string message, IReadOnlyDictionary<string, string>? headers = null)
     {
-        if (!EnsureConnected())
+        _resiliencePolicy.Execute(() =>
         {
-            if (IsLocalMode())
-                _logger.LogInformation("RabbitMQ not available (Local mode). Skipping publish to {QueueName}.", queueName);
-            else
-                _logger.LogError("Failed to publish message to queue {QueueName}: RabbitMQ is not available", queueName);
-            return;
-        }
-
-        try
-        {
-            _connection.Channel!.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
-            var body = Encoding.UTF8.GetBytes(message);
-            var props = _connection.Channel.CreateBasicProperties();
-            props.Persistent = true;
-            if (headers != null && headers.Count > 0)
+            if (!EnsureConnected())
             {
-                props.Headers = new Dictionary<string, object?>();
-                foreach (var (k, v) in headers)
-                    props.Headers[k] = v;
+                if (IsLocalMode())
+                {
+                    _logger.LogInformation("RabbitMQ not available (Local mode). Skipping publish to {QueueName}.", queueName);
+                    return;
+                }
+                
+                throw new Exception($"Failed to connect to RabbitMQ for queue {queueName}");
             }
-            _connection.Channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: props, body: body);
-            _logger.LogInformation("Published message to queue {QueueName}: {Message}", queueName, message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error publishing message to queue {QueueName}", queueName);
-            _connection.MarkDisconnected();
-        }
+
+            try
+            {
+                _connection.Channel!.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+                var body = Encoding.UTF8.GetBytes(message);
+                var props = _connection.Channel.CreateBasicProperties();
+                props.Persistent = true;
+                if (headers != null && headers.Count > 0)
+                {
+                    props.Headers = new Dictionary<string, object?>();
+                    foreach (var (k, v) in headers)
+                        props.Headers[k] = v;
+                }
+                _connection.Channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: props, body: body);
+                _logger.LogInformation("Published message to queue {QueueName}: {Message}", queueName, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error publishing message to queue {QueueName}", queueName);
+                _connection.MarkDisconnected();
+                throw; // Rethrow for Polly to catch and retry if configured
+            }
+        });
     }
 
     public void StartConsuming(string queueName, Func<string, bool> onMessageReceived)
