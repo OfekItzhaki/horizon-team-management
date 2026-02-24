@@ -18,7 +18,7 @@ function isTechnicalError(message: string): boolean {
     /Property.*doesn't exist/i,
     /Property.*does not exist/i,
   ];
-  
+
   return technicalPatterns.some(pattern => pattern.test(message));
 }
 
@@ -27,16 +27,16 @@ function isTechnicalError(message: string): boolean {
  */
 export function extractErrorMessage(error: unknown, defaultMessage: string): string {
   if (!error) return defaultMessage;
-  
+
   try {
     let message: string | null = null;
-    
+
     const dotNetError = error as {
       errors?: Record<string, string[]>;
       title?: string;
       status?: number;
     } | undefined;
-    
+
     if (dotNetError?.errors) {
       const errorMessages = Object.values(dotNetError.errors).flat();
       message = errorMessages.join(', ');
@@ -52,11 +52,11 @@ export function extractErrorMessage(error: unknown, defaultMessage: string): str
         message = errorString;
       }
     }
-    
+
     if (message && !isTechnicalError(message)) {
       return message;
     }
-    
+
     return defaultMessage;
   } catch {
     // If anything fails, return default message
@@ -69,12 +69,12 @@ export function extractErrorMessage(error: unknown, defaultMessage: string): str
  */
 export function isAuthError(error: unknown): boolean {
   if (!error) return false;
-  
+
   try {
     const e = error as { status?: number; statusCode?: number; response?: { status?: number } } | null | undefined;
     const statusCode = e?.status ?? e?.statusCode ?? e?.response?.status;
     const message = extractErrorMessage(error, '').toLowerCase();
-    
+
     return statusCode === 401 || message.includes('unauthorized');
   } catch {
     return false;
@@ -86,12 +86,12 @@ export function isAuthError(error: unknown): boolean {
  */
 export function isTimeoutError(error: unknown): boolean {
   if (!error) return false;
-  
+
   try {
     const message = extractErrorMessage(error, '').toLowerCase();
     const apiError = error as { code?: string };
     const code = apiError?.code;
-    
+
     return (
       message.includes('too long') ||
       message.includes('timeout') ||
@@ -102,9 +102,10 @@ export function isTimeoutError(error: unknown): boolean {
   }
 }
 
+import toast from 'react-hot-toast';
+
 /**
  * Show error toast with consistent formatting
- * TODO: Install react-hot-toast or your preferred toast library and uncomment toast.error()
  */
 export function showErrorToast(
   error: unknown,
@@ -112,7 +113,7 @@ export function showErrorToast(
 ): void {
   const message = extractErrorMessage(error, defaultMessage);
   console.error('Error:', message);
-  // toast.error(message);
+  toast.error(message);
 }
 
 /**
@@ -129,15 +130,15 @@ export function handleApiError(
     }
     return;
   }
-  
+
   if (isTimeoutError(error)) {
-    const timeoutMessage = defaultMessage.includes('timeout') 
-      ? defaultMessage 
+    const timeoutMessage = defaultMessage.includes('timeout')
+      ? defaultMessage
       : 'The request is taking too long. Please try again later.';
     showErrorToast(error, timeoutMessage);
     return;
   }
-  
+
   showErrorToast(error, defaultMessage);
 }
 
@@ -148,10 +149,10 @@ export function getFriendlyErrorMessage(error: unknown, operation: string): stri
   if (isTimeoutError(error)) {
     return `${operation} is taking too long. Please try again later.`;
   }
-  
+
   if (isAuthError(error)) {
     return 'Your session has expired. Please log in again.';
   }
-  
+
   return extractErrorMessage(error, `Unable to ${operation.toLowerCase()}. Please try again.`);
 }

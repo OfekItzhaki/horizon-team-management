@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskManagement.Application.DTOs;
 using TaskManagement.Application.Mappings;
+using TaskManagement.Application.Messaging;
 using TaskManagement.Domain.Entities;
 using TaskManagement.Domain.Enums;
+using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Data;
 
 namespace TaskManagement.Application.Commands.Tasks;
@@ -13,11 +15,16 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, TaskD
 {
     private readonly TaskManagementDbContext _context;
     private readonly ILogger<CreateTaskCommandHandler> _logger;
+    private readonly IOutboxService _outboxService;
 
-    public CreateTaskCommandHandler(TaskManagementDbContext context, ILogger<CreateTaskCommandHandler> logger)
+    public CreateTaskCommandHandler(
+        TaskManagementDbContext context, 
+        ILogger<CreateTaskCommandHandler> logger,
+        IOutboxService outboxService)
     {
         _context = context;
         _logger = logger;
+        _outboxService = outboxService;
     }
 
     public async Task<TaskDto> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
@@ -74,6 +81,18 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, TaskD
         }
 
         _context.Tasks.Add(task);
+
+        // Get creator's email for the outbox message
+        var creator = await _context.Users.FindAsync(new object[] { task.CreatedByUserId }, cancellationToken);
+        
+        await _outboxService.EnqueueMessageAsync(new TaskCreatedEvent
+        {
+            TaskId = task.Id,
+            Title = task.Title,
+            DueDate = task.DueDate,
+            CreatedByUserEmail = creator?.Email ?? string.Empty
+        }, cancellationToken);
+
         await _context.SaveChangesAsync(cancellationToken);
 
         await _context.Entry(task)

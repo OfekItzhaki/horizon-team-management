@@ -11,6 +11,7 @@ interface TaskListProps {
   loading?: boolean;
   currentPage?: number;
   itemsPerPage?: number;
+  totalItems?: number;
   onPageChange?: (page: number) => void;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
 }
@@ -34,13 +35,14 @@ const getPriorityLabel = (priority: Priority): string => {
   return Priority[priority] || 'Unknown';
 };
 
-export const TaskList: React.FC<TaskListProps> = ({ 
-  tasks, 
-  onEdit, 
-  onDelete, 
+export const TaskList: React.FC<TaskListProps> = ({
+  tasks,
+  onEdit,
+  onDelete,
   loading,
   currentPage = 1,
   itemsPerPage = 10,
+  totalItems,
   onPageChange,
   onItemsPerPageChange,
 }) => {
@@ -51,13 +53,17 @@ export const TaskList: React.FC<TaskListProps> = ({
   });
 
   const paginatedTasks = useMemo(() => {
-    if (!onPageChange) return tasks;
+    // If totalItems is provided, it means pagination is handled server-side
+    // and 'tasks' already contains only the current page
+    if (totalItems !== undefined || !onPageChange) return tasks;
+
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     return tasks.slice(start, end);
-  }, [tasks, currentPage, itemsPerPage, onPageChange]);
+  }, [tasks, currentPage, itemsPerPage, onPageChange, totalItems]);
 
-  const totalPages = onPageChange ? Math.ceil(tasks.length / itemsPerPage) : 1;
+  const finalTotalItems = totalItems ?? tasks.length;
+  const totalPages = Math.ceil(finalTotalItems / itemsPerPage);
 
   const handleDeleteClick = (taskId: number, taskTitle: string) => {
     setDeleteConfirm({ isOpen: true, taskId, taskTitle });
@@ -75,8 +81,8 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   if (loading) {
-  return (
-    <div className="space-y-4" style={{ position: 'relative', zIndex: 1 }}>
+    return (
+      <div className="space-y-4" style={{ position: 'relative', zIndex: 1 }}>
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-48 w-full" />
         ))}
@@ -109,86 +115,86 @@ export const TaskList: React.FC<TaskListProps> = ({
         {paginatedTasks.map((task) => {
           const priorityColors = getPriorityColor(task.priority);
           return (
-          <div key={task.id} className="glass-card p-6 hover:shadow-lg transition-all duration-200 border border-gray-200/50 dark:border-gray-700/50">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2">{task.title}</h3>
-              <span
-                className={`px-2.5 py-1 rounded-md text-xs font-medium border ${priorityColors.bg} ${priorityColors.text} ${priorityColors.border} whitespace-nowrap`}
-              >
-                {getPriorityLabel(task.priority)}
-              </span>
-            </div>
-          <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 text-sm leading-relaxed">{task.description}</p>
-          <div className="space-y-2.5 mb-4">
-            <div className="text-sm">
-              <span className="text-gray-500 dark:text-gray-500 font-medium">Due Date</span>
-              <div className="text-gray-900 dark:text-gray-100 mt-0.5">{new Date(task.dueDate).toLocaleDateString()}</div>
-            </div>
-            {task.users.length > 0 && (
-              <div className="text-sm">
-                <span className="text-gray-500 dark:text-gray-500 font-medium">Assigned</span>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {task.users.map((userTask, index) => (
-                    <span 
-                      key={index} 
-                      className="px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+            <div key={task.id} className="glass-card p-6 hover:shadow-lg transition-all duration-200 border border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2">{task.title}</h3>
+                <span
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium border ${priorityColors.bg} ${priorityColors.text} ${priorityColors.border} whitespace-nowrap`}
+                >
+                  {getPriorityLabel(task.priority)}
+                </span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 text-sm leading-relaxed">{task.description}</p>
+              <div className="space-y-2.5 mb-4">
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-500 font-medium">Due Date</span>
+                  <div className="text-gray-900 dark:text-gray-100 mt-0.5">{new Date(task.dueDate).toLocaleDateString()}</div>
+                </div>
+                {task.users.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-500 dark:text-gray-500 font-medium">Assigned</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {task.users.map((userTask, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                        >
+                          {userTask.user.fullName}
+                          <span className="text-gray-500 dark:text-gray-500 ml-1">
+                            {userTask.role === 1 ? '(Owner)' : userTask.role === 2 ? '(Assignee)' : '(Watcher)'}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {task.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {task.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                      style={tag.color ? {
+                        backgroundColor: `${tag.color}15`,
+                        color: tag.color,
+                        borderColor: `${tag.color}40`
+                      } : {}}
                     >
-                      {userTask.user.fullName}
-                      <span className="text-gray-500 dark:text-gray-500 ml-1">
-                        {userTask.role === 1 ? '(Owner)' : userTask.role === 2 ? '(Assignee)' : '(Watcher)'}
-                      </span>
+                      {tag.name}
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-          {task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {task.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
-                  style={tag.color ? { 
-                    backgroundColor: `${tag.color}15`,
-                    color: tag.color,
-                    borderColor: `${tag.color}40`
-                  } : {}}
+              )}
+              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => onEdit(task)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-medium border border-gray-200 dark:border-gray-700"
                 >
-                  {tag.name}
-                </span>
-              ))}
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteClick(task.id, task.title)}
+                  className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                  title="Delete task"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          )}
-          <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button 
-              onClick={() => onEdit(task)} 
-              className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-medium border border-gray-200 dark:border-gray-700"
-            >
-              Edit
-            </button>
-            <button 
-              onClick={() => handleDeleteClick(task.id, task.title)} 
-              className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-red-200 dark:hover:border-red-800"
-              title="Delete task"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        );
+          );
         })}
       </div>
 
-      {onPageChange && tasks.length > 0 && (
+      {onPageChange && finalTotalItems > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={onPageChange}
           itemsPerPage={itemsPerPage}
-          totalItems={tasks.length}
+          totalItems={finalTotalItems}
           onItemsPerPageChange={onItemsPerPageChange}
         />
       )}

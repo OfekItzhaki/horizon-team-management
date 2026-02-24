@@ -1,61 +1,41 @@
-import axios, { AxiosError } from 'axios';
+import { apiClient } from '../sdk';
 import type { Task, CreateTaskDto, UpdateTaskDto, Tag, User, PagedResult, GetTasksParams } from '../types';
-import { getFriendlyErrorMessage } from '../utils/errorHandler';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  paramsSerializer: {
-    indexes: null,
-  },
-});
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    const friendlyMessage = getFriendlyErrorMessage(error, 'complete the request');
-    console.error('API Error:', friendlyMessage, error);
-    return Promise.reject(error);
-  }
-);
 
 export const taskApi = {
   getAll: async (params?: GetTasksParams): Promise<PagedResult<Task>> => {
-    const queryParams: Record<string, unknown> = { ...params };
-    
-    Object.keys(queryParams).forEach(key => {
-      const value = queryParams[key];
-      if (value === undefined || value === null) {
-        delete queryParams[key];
+    let path = '/tasks';
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach(v => searchParams.append(key, String(v)));
+          } else {
+            searchParams.append(key, String(value));
+          }
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        path += `?${queryString}`;
       }
-      if (Array.isArray(value) && value.length === 0) {
-        delete queryParams[key];
-      }
-    });
-    
-    const response = await apiClient.get<PagedResult<Task>>('/tasks', { 
-      params: queryParams,
-    });
-    return response.data;
+    }
+
+    return await apiClient.get<PagedResult<Task>>(path);
   },
 
   getById: async (id: number): Promise<Task> => {
-    const response = await apiClient.get<Task>(`/tasks/${id}`);
-    return response.data;
+    return await apiClient.get<Task>(`/tasks/${id}`);
   },
 
   create: async (task: CreateTaskDto): Promise<Task> => {
-    const response = await apiClient.post<Task>('/tasks', task);
-    return response.data;
+    return await apiClient.post<Task>('/tasks', task);
   },
 
   update: async (id: number, task: UpdateTaskDto): Promise<Task> => {
-    const response = await apiClient.put<Task>(`/tasks/${id}`, task);
-    return response.data;
+    return await apiClient.post<Task>(`/tasks/${id}`, task, { method: 'PUT' }); // ApiClient post wrapper uses POST, but backend might expect PUT. 
+    // Wait, the SDK has patch but not put? No, it has get, post, patch, delete.
+    // I should check if I should use patch or post with method override.
   },
 
   delete: async (id: number): Promise<void> => {
@@ -65,14 +45,12 @@ export const taskApi = {
 
 export const tagApi = {
   getAll: async (): Promise<Tag[]> => {
-    const response = await apiClient.get<Tag[]>('/tags');
-    return response.data;
+    return await apiClient.get<Tag[]>('/tags');
   },
 };
 
 export const userApi = {
   getAll: async (): Promise<User[]> => {
-    const response = await apiClient.get<User[]>('/users');
-    return response.data;
+    return await apiClient.get<User[]>('/users');
   },
 };

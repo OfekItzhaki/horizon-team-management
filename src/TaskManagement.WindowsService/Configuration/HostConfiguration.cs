@@ -54,6 +54,9 @@ public static class HostConfiguration
         builder.Services.Configure<TaskReminderServiceOptions>(
             builder.Configuration.GetSection(TaskReminderServiceOptions.SectionName));
 
+        builder.Services.Configure<OutboxProcessorOptions>(
+            builder.Configuration.GetSection(OutboxProcessorOptions.SectionName));
+
         builder.Services.AddSingleton<IRabbitMQService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<RabbitMQService>>();
@@ -62,6 +65,7 @@ public static class HostConfiguration
         });
 
         builder.Services.AddHostedService<TaskReminderService>();
+        builder.Services.AddHostedService<OutboxProcessor>();
     }
 
     public static void LogStartupInformation(IHost host, string connectionString, string environmentName)
