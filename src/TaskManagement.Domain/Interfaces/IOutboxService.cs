@@ -5,6 +5,6 @@ namespace TaskManagement.Domain.Interfaces
 {
     public interface IOutboxService
     {
-        Task EnqueueMessageAsync<T>(T message, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task EnqueueMessageAsync<T>(T message, CancellationToken cancellationToken = default);
     }
 }

@@ -27,7 +27,7 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, TaskD
         _outboxService = outboxService;
     }
 
-    public async Task<TaskDto> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
+    public async System.Threading.Tasks.Task<TaskDto> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Creating task: {Title}", request.Task.Title);
         var task = new Domain.Entities.Task

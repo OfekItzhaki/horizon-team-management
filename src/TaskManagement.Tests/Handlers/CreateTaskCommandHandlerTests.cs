@@ -9,6 +9,7 @@ using TaskManagement.Domain.Entities;
 using TaskManagement.Domain.Enums;
 using TaskManagement.Infrastructure.Data;
 using DomainTask = TaskManagement.Domain.Entities.Task;
+using TaskManagement.Domain.Interfaces;
 using Xunit;
 
 namespace TaskManagement.Tests.Handlers;
@@ -17,10 +18,12 @@ public class CreateTaskCommandHandlerTests : IDisposable
 {
     private readonly TaskManagementDbContext _context;
     private readonly Mock<ILogger<CreateTaskCommandHandler>> _loggerMock;
+    private readonly Mock<IOutboxService> _outboxMock;
 
     public CreateTaskCommandHandlerTests()
     {
         _loggerMock = new Mock<ILogger<CreateTaskCommandHandler>>();
+        _outboxMock = new Mock<IOutboxService>();
         var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -57,7 +60,7 @@ public class CreateTaskCommandHandlerTests : IDisposable
     public async System.Threading.Tasks.Task Handle_ValidCommand_ShouldCreateTask()
     {
         // Arrange
-        var handler = new CreateTaskCommandHandler(_context, _loggerMock.Object);
+        var handler = new CreateTaskCommandHandler(_context, _loggerMock.Object, _outboxMock.Object);
         var command = new CreateTaskCommand
         {
             Task = new CreateTaskDto
